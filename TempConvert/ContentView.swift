@@ -8,51 +8,88 @@
 import SwiftUI
 
 struct ContentView: View {
+    
+    enum TemperatureUnit: String, CaseIterable {
+        case celsius = "Celsius"
+        case fahrenheit = "Fahrenheit"
+        case kelvin = "Kelvin"
+        
+        var unitSymbol: String {
+            switch self {
+            case .celsius:
+                return "°C"
+            case .fahrenheit:
+                return "°F"
+            default:
+                return "K"
+            }
+        }
+    }
+    
     @State private var temperature = 0.0
-    @State private var currentTemperatureUnit = "Celsius"
-    @State private var targetTemperatureUnit = ""
+    @State private var currentTemperatureUnit = TemperatureUnit.celsius
+    @State private var targetTemperatureUnit = TemperatureUnit.fahrenheit
     @State private var conversionResult = 0.0
     
     @FocusState private var currentTemperatureFieldIsFocused: Bool
-    @FocusState private var targetTemperatureFiledIsFocused: Bool
     
-    private let temperatureUnits = ["Celsius", "Fahrenheit", "Kelvin"]
+    private var temperatureInCelsius: Double {
+        
+        switch currentTemperatureUnit {
+        case .fahrenheit:
+            return (temperature - 32.0) * 5.0 / 9.0
+        case .kelvin:
+            return temperature - 273.15
+        default:
+            return temperature
+        }
+    }
+    
+    private var convertedTemperature: Double {
+        
+        switch targetTemperatureUnit {
+        case .fahrenheit:
+            return (temperatureInCelsius * (9.0 / 5.0)) + 32.0
+        case .kelvin:
+            return temperatureInCelsius + 273.15
+        default:
+            return temperatureInCelsius
+        }
+        
+    }
+    
+    private var validUnits: [TemperatureUnit] {
+        TemperatureUnit.allCases.filter {
+            $0 != currentTemperatureUnit
+        }
+    }
+    
     
     var body: some View {
         NavigationStack {
             Form {
                 Section("Original temperature") {
                     TextField("Temperature", value: $temperature, format: .number)
-                        .keyboardType(.numberPad)
+                        .keyboardType(.decimalPad)
                         .focused($currentTemperatureFieldIsFocused)
                     
                     Picker("Temperature Unit", selection: $currentTemperatureUnit) {
-                        ForEach(temperatureUnits, id: \.self) {
-                            Text($0)
+                        ForEach(TemperatureUnit.allCases, id: \.self) {
+                            Text($0.rawValue)
                         }
                     }
                 }
                 
                 Section("Convert to") {
                     Picker("Temperature Unit", selection: $targetTemperatureUnit) {
-                        ForEach(temperatureUnits, id: \.self) {
-                            if $0 != currentTemperatureUnit {
-                                Text($0)
-                            }
+                        ForEach(validUnits, id: \.self) {
+                            Text($0.rawValue)
                         }
                     }
                 }
                 
-                Button(action: {
-                    conversionResult = convertTemperature(temperature: temperature, from: currentTemperatureUnit, to: targetTemperatureUnit)
-                }) {
-                    Text("Convert")
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
-                }
-                
                 Section("Conversion Result") {
-                    Text("\(conversionResult, specifier: "%.2f") \(getTemperatureUnitSymbol(temperatureUnit: targetTemperatureUnit))")
+                    Text("\(convertedTemperature, specifier: "%.2f") \(targetTemperatureUnit.unitSymbol)")
                 }
               
             }
@@ -64,32 +101,10 @@ struct ContentView: View {
                     }
                 }
             }
-        }
-    }
-    
-    private func convertTemperature(temperature currentTemperature: Double, from currentTemperatureUnit: String, to targetTemperatureUnit: String) -> Double {
-        if currentTemperatureUnit == "Celsius" && targetTemperatureUnit == "Fahrenheit" {
-            return (currentTemperature * (9.0 / 5.0)) + 32.0
-        } else if currentTemperatureUnit == "Celsius" && targetTemperatureUnit == "Kelvin" {
-            return currentTemperature + 273.15
-        } else if currentTemperatureUnit == "Fahrenheit" && targetTemperatureUnit == "Celsius" {
-            return (currentTemperature - 32.0) * 5.0 / 9.0
-        } else if currentTemperatureUnit == "Fahrenheit" && targetTemperatureUnit == "Kelvin" {
-            return ((currentTemperature - 32.0) * (5.0 / 9.0)) + 273.15
-        } else if currentTemperatureUnit == "Kelvin" && targetTemperatureUnit == "Celsius" {
-            return currentTemperature - 273.15
-        } else {
-            return ((currentTemperature - 273.15) * (9.0 / 5.0)) + 32.0
-        }
-    }
-    
-    private func getTemperatureUnitSymbol(temperatureUnit: String) -> String {
-        if temperatureUnit == "Celsius" {
-            return "°C"
-        } else if temperatureUnit == "Fahrenheit" {
-            return "°F"
-        } else {
-            return "K"
+            .navigationTitle("TempConvert")
+            .onChange(of: currentTemperatureUnit) {
+                targetTemperatureUnit = validUnits[0]
+            }
         }
     }
 }
